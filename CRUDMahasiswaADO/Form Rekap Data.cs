@@ -54,6 +54,46 @@ namespace CRUDMahasiswaADO
 
 
         }
+        private void btnLoad_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                SqlCommand cmd = new SqlCommand("sp_Report", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Menambahkan parameter Stored Procedure
+                cmd.Parameters.Add("@inProdi", SqlDbType.VarChar, 50).Value = cmbProdi.SelectedValue;
+                cmd.Parameters.Add("@inTglMsuk", SqlDbType.VarChar, 4).Value = dtpTanggalMasuk.Value.Year.ToString();
+
+                da = new SqlDataAdapter(cmd);
+                dtMahasiswa = new DataTable();
+                da.Fill(dtMahasiswa);
+
+                dataGridView1.DataSource = dtMahasiswa;
+
+                // Validasi tombol cetak aktif jika data ditemukan
+                if (dtMahasiswa.Rows.Count > 0)
+                {
+                    btnCetak.Enabled = true;
+                }
+                else
+                {
+                    btnCetak.Enabled = false;
+                    MessageBox.Show("Data tidak ditemukan");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal Load data: " + ex.Message);
+            }
+
+        }
+
         
     }
 }
