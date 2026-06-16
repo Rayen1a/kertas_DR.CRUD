@@ -24,7 +24,31 @@ namespace CRUDMahasiswaADO
 
         string prodi {  get; set; }
         DateTime tglmasuk { get; set; }
-        
-        
+
+        public Form_Report(string Prodi, DateTime TglMasuk)
+        {
+            InitializeComponent();
+            prodi = Prodi;
+            tglmasuk = TglMasuk;
+
+            try
+            {
+                DataTable dtMahasiswa = dbLogic.getDataRekap(prodi, tglmasuk);
+
+                daftarrekapdatamahasiswa.SetDataSource(dtMahasiswa);
+                crystalReportViewer1.ReportSource = daftarrekapdatamahasiswa;
+                crystalReportViewer1.Refresh();
+            }
+            catch (Exception ex)
+            {
+                //simpanLog(ex.Message);
+                MessageBox.Show("Gagal load data: " + ex.Message);
+            }
+        }
+
+        private void crystalReportViewer1_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }
