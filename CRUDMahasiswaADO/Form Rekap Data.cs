@@ -19,6 +19,41 @@ namespace CRUDMahasiswaADO
             InitializeComponent();
         }
 
+        private void Form_Rekap_Data_Load(object sender, EventArgs e)
+        {
+            dtpTanggalMasuk.Format = DateTimePickerFormat.Custom;
+            dtpTanggalMasuk.CustomFormat = "yyyy";
+            dtpTanggalMasuk.ShowUpDown = true;
+            dtpTanggalMasuk.MinDate = new DateTime(2000, 1, 1);
+            dtpTanggalMasuk.MaxDate = DateTime.Now;
+
+            cmbProdi.DropDownStyle = ComboBoxStyle.DropDownList;
+            btnCetak.Enabled = false; // Tombol cetak dimatikan sebelum data di-load 
+
+            try
+            {
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                SqlCommand cmd = new SqlCommand("select namaprodi from programstudi", conn);
+                cmd.CommandType = CommandType.Text;
+                dtProdi = new DataTable();
+                da = new SqlDataAdapter(cmd);
+                da.Fill(dtProdi);
+
+                cmbProdi.DataSource = dtProdi;
+                cmbProdi.DisplayMember = "namaprodi";
+                cmbProdi.ValueMember = "namaprodi";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal Load data: " + ex.Message);
+            }
+
+
+        }
         
     }
 }
