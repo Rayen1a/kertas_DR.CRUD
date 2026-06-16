@@ -94,6 +94,11 @@ namespace CRUDMahasiswaADO
 
         }
 
-        
+        private void btnCetak_Click(object sender, EventArgs e)
+        {
+            Form_Report frm2 = new Form_Report(cmbProdi.SelectedValue.ToString(), dtpTanggalMasuk.Value);
+            frm2.Show();
+            this.Hide();
+        }
     }
 }
