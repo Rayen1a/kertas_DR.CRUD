@@ -91,6 +91,175 @@ namespace CRUDMahasiswaADO
             return dtMahasiswa;
         }
 
-        
+        public void InsertMhs(string nim, string nama, string alamat, string jeniskelamin, DateTime tanggallahir, string kodeProdi, byte[] foto)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlTransaction trans = conn.BeginTransaction();
+            try
+            {
+                SqlCommand cmd = new SqlCommand("sp_InsertMahasiswa", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("pNIM", nim);
+                cmd.Parameters.AddWithValue("pNama", nama);
+                cmd.Parameters.AddWithValue("pAlamat", alamat);
+                cmd.Parameters.AddWithValue("pJenisKelamin", jeniskelamin);
+                cmd.Parameters.AddWithValue("pTanggalLahir", tanggallahir);
+                cmd.Parameters.AddWithValue("pKodeProdi", kodeProdi);
+                cmd.Parameters.AddWithValue("pFoto", foto);
+
+                cmd.ExecuteNonQuery();
+                trans.Commit();
+            }
+            catch (Exception ex)
+            {
+                trans.Rollback();
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        public void UpdateMhs(string nim, string nama, string alamat, string jeniskelamin, DateTime tanggallahir, string kodeProdi, byte[] foto)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("sp_UpdateMahasiswa", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.AddWithValue("pNIM", nim);
+            cmd.Parameters.AddWithValue("pNama", nama);
+            cmd.Parameters.AddWithValue("pAlamat", alamat);
+            cmd.Parameters.AddWithValue("pJenisKelamin", jeniskelamin);
+            cmd.Parameters.AddWithValue("pTanggalLahir", tanggallahir);
+            cmd.Parameters.AddWithValue("pKodeProdi", kodeProdi);
+            cmd.Parameters.AddWithValue("pFoto", foto);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void DeleteMhs(string nim)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("sp_DeleteMahasiswa", conn);
+            cmd.Parameters.AddWithValue("pNIM", nim);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void resetData()
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            string deleteQuery = "DELETE FROM Mahasiswa;";
+            SqlCommand cmdDelete = new SqlCommand(deleteQuery, conn);
+            cmdDelete.ExecuteNonQuery();
+
+            string insertQuery = @"INSERT INTO Mahasiswa SELECT * FROM MahasiswaBackup;";
+            SqlCommand cmdInsert = new SqlCommand(insertQuery, conn);
+            cmdInsert.ExecuteNonQuery();
+        }
+
+        public void testInject(string nim)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            string query = "Update mahasiswa set nama = 'HACKED' where NIM = '" + nim;
+            SqlCommand cmd = new SqlCommand(query, conn);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void InsertLog(string message)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("sp_LogMessage", conn);
+
+            cmd.Parameters.AddWithValue("@pMessage", message);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.ExecuteNonQuery();
+        }
+
+        public DataTable getProdi()
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("select from namaprodi", conn);
+            cmd.CommandType = CommandType.Text;
+            dtProdi = new DataTable();
+            da = new SqlDataAdapter(cmd);
+            da.Fill(dtProdi);
+
+            return dtProdi;
+        }
+
+        public DataTable getDataRekap(string prodi, DateTime tanggalMasuk)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+
+            SqlCommand cmd = new SqlCommand("sp_Report", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@inProdi", prodi);
+            cmd.Parameters.AddWithValue("@inTglMsuk", tanggalMasuk.Year.ToString());
+
+            da = new SqlDataAdapter(cmd);
+
+            dtMahasiswa = new DataTable();
+            da.Fill(dtMahasiswa);
+
+            return dtMahasiswa;
+        }
+        public DataTable GetAllDataChart()
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("sp_DashBoard", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            da = new SqlDataAdapter(cmd);
+
+            dtMahasiswa = new DataTable();
+            da.Fill(dtMahasiswa);
+
+            return dtMahasiswa;
+        }
+
+        public DataTable GetDataChartByTahun(DateTime thMasuk)
+        {
+            if (conn.State == ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+            SqlCommand cmd = new SqlCommand("sp_DashBoardByTahun", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@inTglMsuk", thMasuk.Year);
+            da = new SqlDataAdapter(cmd);
+            dtMahasiswa = new DataTable();
+            da.Fill(dtMahasiswa);
+            return dtMahasiswa;
+        }
     }
 }
