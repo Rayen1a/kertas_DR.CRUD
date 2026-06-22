@@ -1,12 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CRUDMahasiswaADO
@@ -14,7 +8,6 @@ namespace CRUDMahasiswaADO
     public partial class Form_Report : Form
     {
         static string connectionString = "Data Source=LAPTOP-BDD2S1H1\\RAIHAN_ALFAKHRI1;Initial Catalog=DBAkademikADO;User ID=sa;Password=SQLraihan1";
-        DAL dbLogic = new DAL();
 
         SqlConnection conn = new SqlConnection(connectionString);
         SqlDataAdapter da;
@@ -33,7 +26,21 @@ namespace CRUDMahasiswaADO
 
             try
             {
-                DataTable dtMahasiswa = dbLogic.getDataRekap(prodi, tglmasuk);
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                SqlCommand cmd = new SqlCommand("sp_Report", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@inProdi", prodi);
+                cmd.Parameters.AddWithValue("@inTglMsuk", tglmasuk.Year);
+
+                da = new SqlDataAdapter(cmd);
+                dtMahasiswa = new DataTable();
+                da.Fill(dtMahasiswa);
+
+                conn.Close();
 
                 daftarrekapdatamahasiswa.SetDataSource(dtMahasiswa);
                 crystalReportViewer1.ReportSource = daftarrekapdatamahasiswa;
@@ -41,7 +48,6 @@ namespace CRUDMahasiswaADO
             }
             catch (Exception ex)
             {
-                //simpanLog(ex.Message);
                 MessageBox.Show("Gagal load data: " + ex.Message);
             }
         }
