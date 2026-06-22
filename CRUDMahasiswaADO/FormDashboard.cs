@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
-using System.Linq.Expressions;
-using System.Web.ModelBinding;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -18,20 +16,17 @@ namespace CRUDMahasiswaADO
         public FormDashboard()
         {
             InitializeComponent();
-        }
 
-        private void FormDashboard_Load(object sender, EventArgs e)
-        {
+            dtpTanggalMasuk.MinDate = new DateTime(2000, 1, 1);
             dtpTanggalMasuk.Format = DateTimePickerFormat.Custom;
             dtpTanggalMasuk.CustomFormat = "yyyy";
             dtpTanggalMasuk.ShowUpDown = true;
-            dtpTanggalMasuk.MinDate = new DateTime(2000, 1, 1);
             dtpTanggalMasuk.MaxDate = DateTime.Now;
 
             cmbTipe.DropDownStyle = ComboBoxStyle.DropDownList;
             var items = new List<KeyValuePair<string, SeriesChartType>>
             {
-                new KeyValuePair<string, SeriesChartType>("Column", SeriesChartType.Column),
+                new KeyValuePair<string, SeriesChartType>("Kolon", SeriesChartType.Column),
                 new KeyValuePair<string, SeriesChartType>("Pie", SeriesChartType.Pie)
             };
 
@@ -40,15 +35,10 @@ namespace CRUDMahasiswaADO
             cmbTipe.DisplayMember = "Key";
             cmbTipe.ValueMember = "Value";
             cmbTipe.SelectedIndex = 0;
-
-            if (isInitializing)
-                return;
-            if (button == 1) {
-            }
-            else {
-                loadDataChart();
-            }
+            isInitializing = false;
+            loadDataChart();
         }
+
 
         public void loadDataChart()
         {
@@ -63,18 +53,16 @@ namespace CRUDMahasiswaADO
             ca.AxisX.LabelStyle.Angle = -45;
             ca.BackColor = Color.Transparent;
             chartProdi.ChartAreas.Add(ca);
-
             try
             {
                 if (button == 1)
                 {
-                    dt = dbLogic.GetDataChartByTahun(dtpTanggalMasuk.Value);
+                    dt = dbLogic.getDataChartByTahun(dtpTanggalMasuk.Value);
                 }
                 else
                 {
-                    dt = dbLogic.GetAllDataChart();
+                    dt = dbLogic.getAllDataChart();
                 }
-
                 SeriesChartType tipe = (SeriesChartType)cmbTipe.SelectedValue;
                 if (tipe == SeriesChartType.Column)
                 {
@@ -83,7 +71,7 @@ namespace CRUDMahasiswaADO
                     foreach (DataRow row in dt.Rows)
                     {
                         string prodi = row["NamaProdi"].ToString();
-                        int jumlah = Convert.ToInt32((long)row["JumlahMhs"]);
+                        int jumlah = Convert.ToInt32(row["JmlhMhs"]);
                         s.Points.AddXY(prodi, jumlah);
                     }
                     chartProdi.Series.Add(s);
@@ -93,12 +81,13 @@ namespace CRUDMahasiswaADO
                     Series s = new Series("Jumlah Mahasiswa");
                     s.ChartType = tipe;
                     s.IsValueShownAsLabel = true;
-                    s.Label = "Jumlah";
-                    s.LegendText = "Jumlah";
+                    s.Label = "#VAL";
+                    s.LegendText = "#VALX";
+
                     foreach (DataRow row in dt.Rows)
                     {
                         string prodi = row["NamaProdi"].ToString();
-                        int jumlah = Convert.ToInt32((long)row["JumlahMhs"]);
+                        int jumlah = Convert.ToInt32(row["JmlhMhs"]);
                         s.Points.AddXY(prodi, jumlah);
                     }
                     chartProdi.Series.Add(s);
@@ -106,15 +95,19 @@ namespace CRUDMahasiswaADO
             }
             catch (Exception ex)
             {
-                // Tangani exception jika diperlukan
                 MessageBox.Show("Gagal load data: " + ex.Message);
             }
-
             Title title = new Title("Jumlah Mahasiswa per Program Studi", Docking.Top, new Font("Arial", 14, FontStyle.Bold), Color.DarkBlue);
             chartProdi.Titles.Add(title);
             Legend legend = new Legend("MainLegend");
             legend.Docking = Docking.Right;
             chartProdi.Legends.Add(legend);
+        }
+        private void cmbTipe_SelectedValueChanged(object sender, EventArgs e)
+        {
+            if (isInitializing)
+                return;
+            loadDataChart();
         }
 
         private void btnLoad_Click(object sender, EventArgs e)
