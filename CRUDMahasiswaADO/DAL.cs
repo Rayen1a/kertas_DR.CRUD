@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CRUDMahasiswaADO
@@ -26,240 +22,302 @@ namespace CRUDMahasiswaADO
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show("Error getting local IP address: " + ex.Message);
+                localIP = "";
             }
             return localIP;
         }
 
-        public string GetConnectionString()
+        public static string GetConnectionString()
         {
-            string connectionString = $"Data Source={GetLocalIPAddress()};Initial Catalog=DBAkademikADO;User ID=sa;Password=PasswordSA";
+            string ip = GetLocalIPAddress();
+
+            if (!string.IsNullOrEmpty(ip))
+            {
+                try
+                {
+                    string testConnStr = $"Data Source={ip};Initial Catalog=DBAkademikADO;User ID=sa;Password=SQLraihan1;Connect Timeout=2;";
+                    using (SqlConnection conn = new SqlConnection(testConnStr))
+                    {
+                        conn.Open();
+                        return testConnStr;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            return "Data Source=LAPTOP-BDD2S1H1\\RAIHAN_ALFAKHRI1;Initial Catalog=DBAkademikADO;User ID=sa;Password=SQLraihan1;";
+        }
+
+        private static readonly string connectionString = GetConnectionString();
+
+        public string GetConnectionStringInstance()
+        {
             return connectionString;
         }
-        SqlConnection conn = new SqlConnection(GetConnectionString);
-        SqlDataAdapter da;
-        DataTable dtMahasiswa;
-        DataTable dtProdi;
+
         public int CountMhs()
         {
-            if (conn.State != ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_CountMahasiswa", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    SqlParameter outputParam = new SqlParameter("@Total", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
+
+                    cmd.ExecuteNonQuery();
+                    return outputParam.Value != DBNull.Value ? Convert.ToInt32(outputParam.Value) : 0;
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_CountMahasiswa", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-
-            SqlParameter outputParam = new SqlParameter("@pCount", SqlDbType.Int);
-            outputParam.Direction = ParameterDirection.Output;
-
-            cmd.Parameters.Add(outputParam);
-            cmd.ExecuteNonQuery();
-            return Convert.ToInt32(outputParam.Value);
         }
 
         public DataTable GetMhs()
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dtMahasiswa = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_GetMahasiswa", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dtMahasiswa);
+                    }
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_GetMahasiswa", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            da = new SqlDataAdapter(cmd);
-
-            dtMahasiswa = new DataTable();
-            da.Fill(dtMahasiswa);
-
             return dtMahasiswa;
         }
-
         public DataTable GetMhsByNIM(string nim)
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dtMahasiswa = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_GetMahasiswaByNIM", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add("@PNIM", SqlDbType.Char, 11).Value = nim;
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dtMahasiswa);
+                    }
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_GetMahasiswa", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            da = new SqlDataAdapter(cmd);
-
-            dtMahasiswa = new DataTable();
-            da.Fill(dtMahasiswa);
-
             return dtMahasiswa;
         }
 
         public void InsertMhs(string nim, string nama, string alamat, string jeniskelamin, DateTime tanggallahir, string kodeProdi, byte[] foto)
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-            }
-            SqlTransaction trans = conn.BeginTransaction();
-            try
-            {
-                SqlCommand cmd = new SqlCommand("sp_InsertMahasiswa", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlTransaction trans = conn.BeginTransaction())
+                {
+                    using (SqlCommand command = new SqlCommand("sp_InsertMahasiswa", conn, trans))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
 
-                cmd.Parameters.AddWithValue("pNIM", nim);
-                cmd.Parameters.AddWithValue("pNama", nama);
-                cmd.Parameters.AddWithValue("pAlamat", alamat);
-                cmd.Parameters.AddWithValue("pJenisKelamin", jeniskelamin);
-                cmd.Parameters.AddWithValue("pTanggalLahir", tanggallahir);
-                cmd.Parameters.AddWithValue("pKodeProdi", kodeProdi);
-                cmd.Parameters.AddWithValue("pFoto", foto);
+                        command.Parameters.Add("@PNIM", SqlDbType.Char, 11).Value = nim;
+                        command.Parameters.Add("@pNama", SqlDbType.VarChar, 100).Value = nama;
+                        command.Parameters.Add("@pAlamat", SqlDbType.VarChar, 200).Value = alamat;
+                        command.Parameters.Add("@pJenisKelamin", SqlDbType.Char, 1).Value = jeniskelamin;
+                        command.Parameters.Add("@pTanggalLahir", SqlDbType.DateTime).Value = tanggallahir;
+                        command.Parameters.Add("@pKodeProdi", SqlDbType.Char, 4).Value = kodeProdi;
+                        command.Parameters.Add("@pFoto", SqlDbType.VarBinary, -1).Value = (object)foto ?? DBNull.Value;
 
-                cmd.ExecuteNonQuery();
-                trans.Commit();
-            }
-            catch (Exception ex)
-            {
-                trans.Rollback();
-            }
-            finally
-            {
-                conn.Close();
+                        try
+                        {
+                            command.ExecuteNonQuery();
+                            trans.Commit();
+                        }
+                        catch (Exception)
+                        {
+                            trans.Rollback();
+                            throw;
+                        }
+                    }
+                }
             }
         }
 
         public void UpdateMhs(string nim, string nama, string alamat, string jeniskelamin, DateTime tanggallahir, string kodeProdi, byte[] foto)
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand command = new SqlCommand("sp_UpdateMahasiswa", conn))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    command.Parameters.Add("@PNIM", SqlDbType.Char, 11).Value = nim;
+                    command.Parameters.Add("@pNama", SqlDbType.VarChar, 100).Value = nama;
+                    command.Parameters.Add("@pAlamat", SqlDbType.VarChar, 200).Value = alamat;
+                    command.Parameters.Add("@pJenisKelamin", SqlDbType.Char, 1).Value = jeniskelamin;
+                    command.Parameters.Add("@pTanggalLahir", SqlDbType.DateTime).Value = tanggallahir;
+                    command.Parameters.Add("@pKodeProdi", SqlDbType.Char, 4).Value = kodeProdi;
+                    command.Parameters.Add("@pFoto", SqlDbType.VarBinary, -1).Value = (object)foto ?? DBNull.Value;
+
+                    command.ExecuteNonQuery();
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_UpdateMahasiswa", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-
-            cmd.Parameters.AddWithValue("pNIM", nim);
-            cmd.Parameters.AddWithValue("pNama", nama);
-            cmd.Parameters.AddWithValue("pAlamat", alamat);
-            cmd.Parameters.AddWithValue("pJenisKelamin", jeniskelamin);
-            cmd.Parameters.AddWithValue("pTanggalLahir", tanggallahir);
-            cmd.Parameters.AddWithValue("pKodeProdi", kodeProdi);
-            cmd.Parameters.AddWithValue("pFoto", foto);
-
-            cmd.ExecuteNonQuery();
         }
-
         public void DeleteMhs(string nim)
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_DeleteMahasiswa", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add("@NIM", SqlDbType.Char, 11).Value = nim;
+                    cmd.ExecuteNonQuery();
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_DeleteMahasiswa", conn);
-            cmd.Parameters.AddWithValue("pNIM", nim);
-            cmd.CommandType = CommandType.StoredProcedure;
-
-            cmd.ExecuteNonQuery();
         }
 
         public void resetData()
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-            }
-            string deleteQuery = "DELETE FROM Mahasiswa;";
-            SqlCommand cmdDelete = new SqlCommand(deleteQuery, conn);
-            cmdDelete.ExecuteNonQuery();
+                using (SqlTransaction trans = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        using (SqlCommand cmdDelete = new SqlCommand("DELETE FROM Mahasiswa;", conn, trans))
+                        {
+                            cmdDelete.ExecuteNonQuery();
+                        }
 
-            string insertQuery = @"INSERT INTO Mahasiswa SELECT * FROM MahasiswaBackup;";
-            SqlCommand cmdInsert = new SqlCommand(insertQuery, conn);
-            cmdInsert.ExecuteNonQuery();
+                        string insertQuery = @"
+                            INSERT INTO Mahasiswa (NIM, Nama, JenisKelamin, TanggalLahir, Alamat, KodeProdi, TanggalDaftar)
+                            SELECT NIM, Nama, JenisKelamin, TanggalLahir, Alamat, KodeProdi, TanggalDaftar FROM Mahasiswa_Backup;";
+
+                        using (SqlCommand cmdInsert = new SqlCommand(insertQuery, conn, trans))
+                        {
+                            cmdInsert.ExecuteNonQuery();
+                        }
+
+                        trans.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        trans.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         public void testInject(string nim)
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                string query = "UPDATE Mahasiswa SET Nama = 'HACKED' WHERE NIM = '" + nim + "'";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
             }
-            string query = "Update mahasiswa set nama = 'HACKED' where NIM = '" + nim;
-            SqlCommand cmd = new SqlCommand(query, conn);
-            cmd.ExecuteNonQuery();
         }
 
         public void InsertLog(string message)
         {
-            if (conn.State == ConnectionState.Closed)
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_LogMessage", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add("@pesan", SqlDbType.VarChar, -1).Value = message;
+                    cmd.ExecuteNonQuery();
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_LogMessage", conn);
-
-            cmd.Parameters.AddWithValue("@pMessage", message);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.ExecuteNonQuery();
         }
 
         public DataTable getProdi()
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dtProdi = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("SELECT NamaProdi FROM ProgramStudi", conn))
+                {
+                    cmd.CommandType = CommandType.Text;
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dtProdi);
+                    }
+                }
             }
-            SqlCommand cmd = new SqlCommand("select from namaprodi", conn);
-            cmd.CommandType = CommandType.Text;
-            dtProdi = new DataTable();
-            da = new SqlDataAdapter(cmd);
-            da.Fill(dtProdi);
-
             return dtProdi;
         }
 
         public DataTable getDataRekap(string prodi, DateTime tanggalMasuk)
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dt = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_Report", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add("@inProdi", SqlDbType.VarChar, 100).Value = prodi;
+                    cmd.Parameters.Add("@inTglMsuk", SqlDbType.Char, 4).Value = tanggalMasuk.Year.ToString();
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
             }
-
-            SqlCommand cmd = new SqlCommand("sp_Report", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@inProdi", prodi);
-            cmd.Parameters.AddWithValue("@inTglMsuk", tanggalMasuk.Year.ToString());
-
-            da = new SqlDataAdapter(cmd);
-
-            dtMahasiswa = new DataTable();
-            da.Fill(dtMahasiswa);
-
-            return dtMahasiswa;
+            return dt;
         }
-        public DataTable GetAllDataChart()
+        public DataTable getAllDataChart()
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dt = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_DashBoard", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_DashBoard", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-
-            da = new SqlDataAdapter(cmd);
-
-            dtMahasiswa = new DataTable();
-            da.Fill(dtMahasiswa);
-
-            return dtMahasiswa;
+            return dt;
         }
 
-        public DataTable GetDataChartByTahun(DateTime thMasuk)
+        public DataTable getDataChartByTahun(DateTime thMasuk)
         {
-            if (conn.State == ConnectionState.Closed)
+            DataTable dt = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_DashBoardByTahun", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add("@inTglMsuk", SqlDbType.Char, 4).Value = thMasuk.Year.ToString();
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
             }
-            SqlCommand cmd = new SqlCommand("sp_DashBoardByTahun", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@inTglMsuk", thMasuk.Year);
-            da = new SqlDataAdapter(cmd);
-            dtMahasiswa = new DataTable();
-            da.Fill(dtMahasiswa);
-            return dtMahasiswa;
+            return dt;
         }
     }
 }
